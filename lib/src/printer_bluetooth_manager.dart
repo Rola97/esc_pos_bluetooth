@@ -8,18 +8,19 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'package:esc_pos_utils/esc_pos_utils.dart';
-import 'package:rxdart/rxdart.dart';
+
 import 'package:flutter_bluetooth_basic/flutter_bluetooth_basic.dart';
+import 'package:rxdart/rxdart.dart';
+
 import './enums.dart';
 
 /// Bluetooth printer
 class PrinterBluetooth {
-  PrinterBluetooth(this._device);
   final BluetoothDevice _device;
+  PrinterBluetooth(this._device);
 
-  String? get name => _device.name;
   String? get address => _device.address;
+  String? get name => _device.name;
   int? get type => _device.type;
 }
 
@@ -33,14 +34,29 @@ class PrinterBluetoothManager {
   PrinterBluetooth? _selectedPrinter;
 
   final BehaviorSubject<bool> _isScanning = BehaviorSubject.seeded(false);
-  Stream<bool> get isScanningStream => _isScanning.stream;
-
   final BehaviorSubject<List<PrinterBluetooth>> _scanResults =
       BehaviorSubject.seeded([]);
+
+  Stream<bool> get isScanningStream => _isScanning.stream;
   Stream<List<PrinterBluetooth>> get scanResults => _scanResults.stream;
 
-  Future _runDelayed(int seconds) {
-    return Future<dynamic>.delayed(Duration(seconds: seconds));
+  Future<PosPrintResult> printTicket(
+    List<int> bytes, {
+    int chunkSizeBytes = 20,
+    int queueSleepTimeMs = 20,
+  }) async {
+    if (bytes.isEmpty) {
+      return Future<PosPrintResult>.value(PosPrintResult.ticketEmpty);
+    }
+    return writeBytes(
+      bytes,
+      chunkSizeBytes: chunkSizeBytes,
+      queueSleepTimeMs: queueSleepTimeMs,
+    );
+  }
+
+  void selectPrinter(PrinterBluetooth printer) {
+    _selectedPrinter = printer;
   }
 
   void startScan(Duration timeout) async {
@@ -65,10 +81,6 @@ class PrinterBluetoothManager {
 
   void stopScan() async {
     await _bluetoothManager.stopScan();
-  }
-
-  void selectPrinter(PrinterBluetooth printer) {
-    _selectedPrinter = printer;
   }
 
   Future<PosPrintResult> writeBytes(
@@ -142,18 +154,7 @@ class PrinterBluetoothManager {
     return completer.future;
   }
 
-  Future<PosPrintResult> printTicket(
-    List<int> bytes, {
-    int chunkSizeBytes = 20,
-    int queueSleepTimeMs = 20,
-  }) async {
-    if (bytes.isEmpty) {
-      return Future<PosPrintResult>.value(PosPrintResult.ticketEmpty);
-    }
-    return writeBytes(
-      bytes,
-      chunkSizeBytes: chunkSizeBytes,
-      queueSleepTimeMs: queueSleepTimeMs,
-    );
+  Future _runDelayed(int seconds) {
+    return Future<dynamic>.delayed(Duration(seconds: seconds));
   }
 }
